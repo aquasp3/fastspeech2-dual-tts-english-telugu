@@ -1,72 +1,88 @@
-# FastSpeech 2 Dual-Language TTS (English & Telugu)
+# FastSpeech 2 Text-to-Speech: English (Svarah) and Telugu (IndicTTS)
 
-This repository contains the complete implementation, configuration, and results for a dual-language Text-to-Speech system utilizing the **FastSpeech 2** architecture. The models were trained on English (Svarah) and Telugu (IndicTTS) datasets.
+Two separately trained FastSpeech 2 models, based on https://github.com/ming024/FastSpeech2.
+Both use the HiFi-GAN (universal) vocoder and were trained for 12,000 steps (batch size 16).
 
-## Project Structure
+## Structure
 
 ```text
-project/
-│
-├── English/                  # Source code and configs for English
-│   ├── checkpoints/          # Weights-only 12000-step checkpoint (Git LFS)
-│   ├── config.yaml           # Model configuration
-│   └── inference.py          # Synthesis script
-│
-├── Telugu/                   # Source code and configs for Telugu
-│   ├── checkpoints/          # Weights-only 12000-step checkpoint (Git LFS)
-│   ├── config.yaml           # Model configuration
-│   └── inference.py          # Synthesis script
-│
-├── Results/                  
-│   ├── English/              # Audio, loss plots, and variance adaptor plots
-│   └── Telugu/               # Audio, loss plots, and variance adaptor plots
-│
-├── Report/
-│   └── Technical_Report.pdf  # Detailed analysis of methodology and results
-│
-├── requirements.txt          # Software dependencies
-└── README.md                 # Project documentation
+English/   train.py preprocess.py inference.py config.yaml config/ checkpoints/12000.pth.tar
+Telugu/    train.py preprocess.py inference.py config.yaml config/ checkpoints/12000.pth.tar
+Results/   English/ and Telugu/: training_loss.png, validation_loss.png,
+           test_generated_audios/, variance_adaptor_plots/{duration,pitch,energy}/
+Report/    Technical_Report.pdf
+requirements.txt
+```
 
-Quick Start & Reproducibility
-1. Prerequisites
-Ensure you have the following installed:
+`config.yaml` is the model configuration. `config/` holds the preprocess, train and model
+configs that the scripts read.
 
-Python 3.8+
-Git (Tested on v2.50.0.windows.1)
-Git LFS (Tested on v3.6.1)
+## Setup
 
-2. Installation
-Clone the repository and install the dependencies:
+Python 3.11 and a CUDA 12.1 GPU are recommended.
 
-git clone <your-github-repo-url>
-cd project
+```bash
 pip install -r requirements.txt
-
-3. Checkpoints & Git LFS
-The 12000-step checkpoints exceed standard GitHub file size limits and are tracked via Git Large File Storage (LFS). Ensure you have Git LFS installed to pull the weights correctly:
-
 git lfs install
 git lfs pull
+```
 
-4. Running Inference
-The inference scripts are pre-configured to utilize the Griffin-Lim vocoder and will automatically map GPU-trained checkpoints to CPU if necessary.
+The weights-only checkpoints and `hifigan/generator_universal.pth.tar` are stored with Git LFS.
 
-Synthesize English:
+## Inference
 
-cd English
+Run from inside the language folder:
+
+```bash
+cd Telugu        # or: cd English
 python inference.py --restore_step 12000
+```
 
-Synthesize Telugu:
+This writes the five test wavs and the duration, pitch and energy plots to `../Results/<Language>/`.
 
-cd Telugu
+## Data and alignment
+
+| | English (Svarah) | Telugu (IndicTTS, speaker1) |
+|---|---|---|
+| Subset | random ~6.2 h, seed 1234 | random, seed 1234, 1-11 s, ~6 h target |
+| After alignment | 4,157 utterances | 3,167 utterances (5.02 h) |
+| Train | 3,657 utterances (5.05 h) | 2,545 utterances (4.02 h) |
+| Validation | 500 utterances (0.69 h) | 622 utterances (1.00 h) |
+| Alignment | MMS_FA forced word alignment, phones estimated inside words | proportional character alignment (no forced aligner) |
+
+## Telugu changes
+
+- `text/symbols.py`: character-level Telugu symbols (U+0C00-U+0C7F)
+- `text/telugu_text.py`: numbers, times and ordinals to Telugu words; text to characters with `sp` at boundaries
+- `gen_telugu_textgrid.py`: subset selection and proportional character alignment
+- `audio/stft.py`: device-independent; `preprocessor/preprocessor.py`: scaler fix and duration-based validation split (`val_hours`)
+
+## Reproduce
+
+Telugu (inside `Telugu/`):
+
+```bash
+python gen_telugu_textgrid.py --hours 6.0
+python preprocess.py config/preprocess.yaml
+python train.py -p config/preprocess.yaml -m config/config.yaml -t config/train.yaml
+python plot_losses.py
 python inference.py --restore_step 12000
+```
 
-The generated .wav audio files and variance adaptor plots will be exported to the respective Results/ directory.
+English (inside `English/`):
 
-Features & Modifications
-PyTorch 2.6 Compatibility: Handled the weights_only=False requirement to allow successful unpickling of checkpoint artifacts in newer PyTorch versions.
+```bash
+python gen_english_textgrid.py
+python preprocess.py config/preprocess.yaml
+python train.py -p config/preprocess.yaml -m config/config.yaml -t config/train.yaml
+python plot_losses.py
+python inference.py --restore_step 12000
+```
 
-Direct Phoneme Synthesis: Configured to accept raw ARPAbet/Indic phoneme strings to guarantee robust processing of complex words and numerics without text-cleaner breakdown.
+## Known limitations
 
-Author
-Sathvik Konduri
+Telugu output is only partially intelligible, mainly because of approximate proportional
+alignment, character-level symbols and about 4 h of training data. Both models show mild
+overfitting after early training. See `Report/Technical_Report.pdf`.
+
+Author: Sathvik Konduri
