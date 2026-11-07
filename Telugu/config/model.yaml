@@ -1,0 +1,31 @@
+transformer:
+  encoder_layer: 4
+  encoder_head: 2
+  encoder_hidden: 256
+  decoder_layer: 4
+  decoder_head: 2
+  decoder_hidden: 256
+  conv_filter_size: 1024
+  conv_kernel_size: [9, 1]
+  encoder_dropout: 0.2
+  decoder_dropout: 0.2
+  block_validation: False
+
+variance_adaptor:
+  duration_predictor:
+    filter_size: 256
+    kernel_size: 3
+    dropout: 0.2
+  pitch_predictor:
+    filter_size: 256
+    kernel_size: 3
+    dropout: 0.2
+  energy_predictor:
+    filter_size: 256
+    kernel_size: 3
+    dropout: 0.2
+  predictor_hidden: 256
+
+vocoder:
+  model: 'Griffin-Lim'
+  speaker: 'universal'

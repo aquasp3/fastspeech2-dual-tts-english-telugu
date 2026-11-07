@@ -1,0 +1,20 @@
+path:
+  ckpt_path: './checkpoints'
+  log_path: '../Results/English/log'
+  result_path: '../Results/English/result'
+optimizer:
+  batch_size: 16
+  betas: [0.9, 0.98]
+  eps: 0.000000001
+  weight_decay: 0.0
+  grad_clip_thresh: 1.0
+  grad_acc_step: 1
+  warm_up_step: 2000
+  anneal_steps: [7200, 9600, 10800]
+  anneal_rate: 0.3
+step:
+  total_step: 12000
+  log_step: 100
+  synth_step: 2000
+  val_step: 500
+  save_step: 2000
